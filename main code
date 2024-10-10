@@ -1,0 +1,88 @@
+import os
+import pandas as pd
+import numpy as np
+from sklearn.model_selection import train_test_split
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.metrics import classification_report, accuracy_score
+
+healthy_data_folder = r'C:\Users\found\all anaconda\Untitled Folder 1\healthy_data_folder'
+broken_tooth_data_folder = r'C:\Users\found\all anaconda\Untitled Folder 1\broken_tooth_data_folder'
+
+def load_data(folder, label, delimiter='\t'):  
+    data = []
+    for file in os.listdir(folder):
+        file_path = os.path.join(folder, file)
+        
+        df = pd.read_csv(file_path, delimiter=delimiter) 
+        df['label'] = label
+        data.append(df)
+    
+    return pd.concat(data, ignore_index=True)
+
+healthy_data = load_data(healthy_data_folder, label=0, delimiter='\t') 
+broken_tooth_data = load_data(broken_tooth_data_folder, label=1, delimiter='\t')  
+
+data = pd.concat([healthy_data, broken_tooth_data], ignore_index=True)
+
+X = data.drop(columns=['label']) 
+y = data['label']  
+
+print("Missing values in X:")
+print(X.isnull().sum())
+print("Missing values in y:")
+print(y.isnull().sum())
+
+print(f"Shape of X: {X.shape}")
+print(f"Shape of y: {y.shape}")
+
+X = X.fillna(X.mean())  
+y = y.fillna(y.mode()[0])  
+
+X = pd.get_dummies(X, drop_first=True)
+print("Data types in X:")
+print(X.dtypes)
+print("Data types in y:")
+print(y.dtypes)
+
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+
+print(f"Shape of X_train: {X_train.shape}")
+print(f"Shape of y_train: {y_train.shape}")
+
+rf_model = RandomForestClassifier(n_estimators=100, random_state=42)
+
+try:
+    rf_model.fit(X_train, y_train)
+except ValueError as e:
+    print("Error during model fitting:", e)
+    print("X_train sample:", X_train.head())
+    print("y_train sample:", y_train.head())
+    raise  
+
+y_pred = rf_model.predict(X_test)
+
+accuracy = accuracy_score(y_test, y_pred)
+print(f"Accuracy: {accuracy * 100:.2f}%")
+print("Classification Report:")
+print(classification_report(y_test, y_pred))
+
+results = pd.DataFrame({'Actual': y_test, 'Predicted': y_pred})
+print("Predictions vs Actual:")
+print(results.head(10)) 
+
+feature_names = X.columns.tolist() 
+new_data = np.array([[0.5, 1.5, 2.0, 3.5, 4.0]])  
+
+new_data_df = pd.DataFrame(new_data, columns=feature_names)
+
+predicted_label = rf_model.predict(new_data_df)
+
+if predicted_label[0] == 0:
+    print("The prediction for the input data is: Healthy")
+else:
+    print("The prediction for the input data is: Broken Tooth")
+
+importances = rf_model.feature_importances_
+feature_importance = pd.DataFrame({'feature': X.columns, 'importance': importances}).sort_values(by='importance', ascending=False)
+print("Feature Importances:")
+print(feature_importance)
